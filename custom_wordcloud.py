@@ -7,6 +7,7 @@ import random
 import re
 from collections import Counter
 import math
+import os
 
 def download_nltk_data():
     # Download required NLTK data
@@ -90,8 +91,25 @@ def generate_custom_wordcloud(text, output_file='custom_wordcloud.png'):
     image = Image.new('RGB', (width, height), background_color)
     draw = ImageDraw.Draw(image)
     
-    # Load font (using default system font)
-    base_font = ImageFont.load_default()
+    # Try to load a system font, fall back to default if not available
+    try:
+        # Try common system fonts
+        font_paths = [
+            '/System/Library/Fonts/Helvetica.ttc',  # macOS
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux
+            'C:\\Windows\\Fonts\\arial.ttf'  # Windows
+        ]
+        
+        font = None
+        for path in font_paths:
+            if os.path.exists(path):
+                font = ImageFont.truetype(path, 20)  # Start with size 20
+                break
+                
+        if font is None:
+            font = ImageFont.load_default()
+    except Exception:
+        font = ImageFont.load_default()
     
     # Sort words by frequency (descending)
     sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
@@ -104,7 +122,12 @@ def generate_custom_wordcloud(text, output_file='custom_wordcloud.png'):
     for word, freq in sorted_words:
         # Calculate font size based on frequency
         font_size = int(get_word_size(freq, max_freq))
-        font = ImageFont.truetype("Arial", font_size)
+        try:
+            if font != ImageFont.load_default():
+                font = ImageFont.truetype(font.path, font_size)
+        except Exception:
+            # If we can't resize the font, continue with current size
+            pass
         
         # Get word dimensions
         bbox = draw.textbbox((0, 0), word, font=font)
